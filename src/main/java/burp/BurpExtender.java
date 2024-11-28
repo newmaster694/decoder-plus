@@ -9,5 +9,6 @@ public class BurpExtender implements BurpExtension {
 		api.extension().setName("HTTP response decoder");
 		
 		//将插件注册到这个"主类"中
+		api.http().registerHttpHandler(new HttpResponseDecoder(api));
 	}
 }
