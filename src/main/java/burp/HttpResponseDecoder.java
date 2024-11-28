@@ -1,11 +1,17 @@
 package burp;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.handler.*;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.logging.Logging;
+import cn.hutool.core.text.UnicodeUtil;
+import cn.hutool.core.util.StrUtil;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static burp.api.montoya.http.handler.ResponseReceivedAction.continueWith;
 
@@ -26,6 +32,7 @@ public class HttpResponseDecoder implements HttpHandler {
 	
 	/**
 	 * 处理接收的HTTPBody并将其中的unicode编码转换为中文
+	 *
 	 * @param httpResponseReceived 接收的HTTP请求
 	 * @return ResponseReceivedAction 处理完的HTTP接收请求
 	 */
@@ -33,18 +40,18 @@ public class HttpResponseDecoder implements HttpHandler {
 	public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived httpResponseReceived) {
 		String responseBody = httpResponseReceived.bodyToString();
 		
-		String asciicode = extractUnicodeCodes(responseBody);
+		List<String> unicodes = extractUnicodeCodes(responseBody);
 		
 		String httpResponseReceivedDecoderStr = null;
 		
-		if (!asciicode.isEmpty()) {
+		if (StrUtil.isNotBlank(unicodes.toString())) {
 			logging.logToOutput("检测到unicode字符串,开始解码...");
-			httpResponseReceivedDecoderStr = replaceUnicodeWithChars(responseBody, asciicode);
+			httpResponseReceivedDecoderStr = replaceUnicodeWithChars(responseBody, unicodes);
 		}
 		
 		// 构造新的响应体
 		byte[] newResponseBodyBytes = httpResponseReceivedDecoderStr != null ? httpResponseReceivedDecoderStr.getBytes() : responseBody.getBytes();
-		HttpResponse newResponse = httpResponseReceived.withBody(Arrays.toString(newResponseBodyBytes));
+		HttpResponse newResponse = httpResponseReceived.withBody(ByteArray.byteArray(newResponseBodyBytes));
 		
 		// 返回新的响应
 		return continueWith(newResponse, httpResponseReceived.annotations());
@@ -56,43 +63,34 @@ public class HttpResponseDecoder implements HttpHandler {
 	 * @param input 输入的字符串
 	 * @return 包含所有Unicode编码的字符串
 	 */
-	public static String extractUnicodeCodes(String input) {
-		StringBuilder unicodeCodes = new StringBuilder();
-		
-		for (int i = 0; i < input.length(); ) {
-			int codePoint = input.codePointAt(i);
-			if (codePoint > 127) {
-				// 如果是，则将其转换为Unicode编码格式
-				String code = "\\u" + Integer.toHexString(codePoint).toUpperCase();
-				unicodeCodes.append(code).append(" ");
+	public static List<String> extractUnicodeCodes(String input) {
+			// 定义匹配Unicode编码的正则表达式
+			Pattern pattern = Pattern.compile("\\\\u[0-9a-fA-F]{4}");
+			Matcher matcher = pattern.matcher(input);
+			
+			// 创建一个列表来保存所有的Unicode编码
+			List<String> unicodeCodes = new ArrayList<>();
+			
+			// 查找所有匹配项并添加到列表中
+			while (matcher.find()) {
+				unicodeCodes.add(matcher.group());
 			}
-			i += Character.charCount(codePoint);
-		}
-		
-		return unicodeCodes.toString().trim();
+			
+			return unicodeCodes;
 	}
 	
 	/**
 	 * 将提取的Unicode编码转换回中文字符，并替换掉原字符串中的Unicode编码
-	 *
 	 * @param input        输入的字符串
 	 * @param unicodeCodes 提取的Unicode编码字符串
 	 * @return 替换后的字符串
 	 */
-	public static String replaceUnicodeWithChars(String input, String unicodeCodes) {
-		String[] codes = unicodeCodes.split(" ");
-		for (String code : codes) {
-			if (!code.isEmpty()) {
-				// 将Unicode编码转换回字符
-				char[] chars = new char[2];
-				int len = code.length();
-				chars[0] = (char) Integer.parseInt(code.substring(2, len - 2), 16);
-				chars[1] = (char) Integer.parseInt(code.substring(len - 2), 16);
-				char ch = (char) Integer.parseInt(code.substring(2), 16);
+	public static String replaceUnicodeWithChars(String input, List<String> unicodeCodes) {
+		for (String unicode : unicodeCodes) {
+			if (StrUtil.isNotBlank(unicode)) {
+				String res = UnicodeUtil.toString(unicode);
 				
-				// 替换原字符串中的Unicode编码
-				String unicodePattern = "\\\\u" + code.substring(2).toLowerCase();
-				input = input.replace(unicodePattern, String.valueOf(ch));
+				input = input.replace(unicode, res);
 			}
 		}
 		
