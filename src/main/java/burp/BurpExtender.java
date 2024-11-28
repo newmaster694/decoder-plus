@@ -1,27 +1,13 @@
 package burp;
 
-import java.io.PrintWriter;
+import burp.api.montoya.BurpExtension;
+import burp.api.montoya.MontoyaApi;
 
-public class BurpExtender implements IBurpExtender{
+public class BurpExtender implements BurpExtension {
 	@Override
-	public void registerExtenderCallbacks(IBurpExtenderCallbacks callbacks) {
-		// set our extension name
-		callbacks.setExtensionName("decoder-plus");
+	public void initialize(MontoyaApi api) {
+		api.extension().setName("HTTP response decoder");
 		
-		// obtain our output and error streams
-		PrintWriter stdout = new PrintWriter(callbacks.getStdout(), true);
-		PrintWriter stderr = new PrintWriter(callbacks.getStderr(), true);
-		
-		// write a message to our output stream
-		stdout.println("successful output");
-		
-		// write a message to our error stream
-		stderr.println("Hello errors");
-		
-		// write a message to the Burp alerts tab
-		callbacks.issueAlert("Hello alerts");
-		
-		// throw an exception that will appear in our error stream
-		throw new RuntimeException("Hello exceptions");
+		//将插件注册到这个"主类"中
 	}
 }
