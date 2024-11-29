@@ -8,6 +8,7 @@ import burp.api.montoya.logging.Logging;
 import cn.hutool.core.text.UnicodeUtil;
 import cn.hutool.core.util.StrUtil;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -50,7 +51,7 @@ public class HttpResponseDecoder implements HttpHandler {
 		}
 		
 		// 构造新的响应体
-		byte[] newResponseBodyBytes = httpResponseReceivedDecoderStr != null ? httpResponseReceivedDecoderStr.getBytes() : responseBody.getBytes();
+		byte[] newResponseBodyBytes = httpResponseReceivedDecoderStr != null ? httpResponseReceivedDecoderStr.getBytes(StandardCharsets.UTF_8) : responseBody.getBytes(StandardCharsets.UTF_8);
 		HttpResponse newResponse = httpResponseReceived.withBody(ByteArray.byteArray(newResponseBodyBytes));
 		
 		// 返回新的响应
